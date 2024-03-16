@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 class q_network(nn.Module):
-    def __init__(self, input_size, output_size, hidden_size=64):
+    def __init__(self, input_size, output_size, hidden_size=4):
         super(q_network, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)

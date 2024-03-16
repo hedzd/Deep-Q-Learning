@@ -24,5 +24,5 @@ class Environment:
 
 
 if __name__ == '__main__':
-    env = Environment()
+    env = Environment(render=True)
     env.simulate_env()

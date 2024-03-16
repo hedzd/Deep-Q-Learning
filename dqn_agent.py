@@ -2,6 +2,7 @@ from environment import Environment
 from collections import deque 
 from q_network import q_network
 import numpy as np
+import matplotlib.pyplot as plt
 
 class dqn_agent:
     env = None
@@ -29,6 +30,9 @@ class dqn_agent:
             else:
                 a = np.argmax(values.numpy())
 
+        elif policy == 'boltzmann':
+            raise NotImplementedError("Boltzmann policy not implemented yet") # TODO
+        
         elif policy == 'greedy':
             values = self.network.forward(observation, grad=False)
             a = np.argmax(values.numpy())
@@ -56,7 +60,7 @@ class dqn_agent:
             state, info = env.reset_env()
             done = False
             total_reward = 0
-            while not done:
+            while not done and total_reward < 200:
                 action = self.select_action(state, policy='greedy')
                 next_state, reward, done, truncated, info = env.env.step(action)
                 total_reward += reward
@@ -67,6 +71,7 @@ class dqn_agent:
         return np.mean(rewards)    
     
     def run(self):
+        avg_rewards = []
         self.state, info = self.env.reset_env()
         for i in range(self.training_iterations):
             action = self.select_action(self.state)
@@ -81,7 +86,8 @@ class dqn_agent:
                 for index in batch_indices:
                     losses.append(self.update_network(index))
                 
-                print(f"Iteration {i}: average loss: {np.mean(losses)}, average reward: {self.eval()}")
+                avg_rewards.append(self.eval())
+                print(f"Iteration {i}: average loss: {np.mean(losses)}, average reward: {avg_rewards[-1]}")
 
         # test
         self.env = Environment(render=True)
@@ -92,6 +98,9 @@ class dqn_agent:
             next_state, reward, done, truncated, info = self.env.env.step(action)
             self.state = next_state
 
+        
+        plt.plot(avg_rewards)
+        plt.show()
 
 if __name__ == '__main__':
     agent = dqn_agent()
