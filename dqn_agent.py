@@ -102,8 +102,9 @@ class dqn_agent:
             env = Environment()
             state, info = env.reset_env()
             done = False
+            truncated = False
             total_reward = 0
-            while not done and total_reward < 200:
+            while not done and not truncated:
                 action = self.select_action(state, policy="greedy")
                 next_state, reward, done, truncated, info = env.env.step(action)
                 total_reward += reward
@@ -123,12 +124,12 @@ class dqn_agent:
             next_state, reward, done, truncated, info = self.env.env.step(action)
 
             # reset if done
-            if done:
+            if done or truncated:
                 self.state, info = self.env.reset_env()
 
             if self.use_experience_replay:
                 # append to buffer
-                self.buffer.append((self.state, action, reward, done))
+                self.buffer.append((self.state, action, reward, done or truncated))
                 self.state = next_state
 
                 if i > self.batch_size:
@@ -142,7 +143,7 @@ class dqn_agent:
                         self.update_network(state, action, reward, done, next_state)
             else:
                 # train with the last state
-                self.update_network(self.state, action, reward, done, next_state)
+                self.update_network(self.state, action, reward, done or truncated, next_state)
                 self.state = next_state
 
             # clone the network to the target network
@@ -153,32 +154,29 @@ class dqn_agent:
             if i % self.eval_frequency == 0:
                 avg_rewards.append(self.eval())
                 pbar.set_description(f"Average reward {avg_rewards[-1]}")
-                if avg_rewards[-1] > 150:
+                if avg_rewards[-1] > self.early_stopping:
                     print(f"Training completed in {i} iterations")
                     break
 
-        # test
-                
+        # test                
         plt.plot(avg_rewards)
         plt.show()
         test = input()
         self.env = Environment(render=True)
         self.state, info = self.env.reset_env()
         done = False
-        while not done:
+        truncated = False
+        while not done and not truncated:
             action = self.select_action(self.state, policy="greedy")
             next_state, reward, done, truncated, info = self.env.env.step(action)
             self.state = next_state
 
-        
-
-
 if __name__ == "__main__":
     agent = dqn_agent(
         training_iterations=5000,
-        learning_rate=1e-3,
+        learning_rate=1e-2,
         gamma=0.99,
-        hidden_layer_size=128,
+        hidden_layer_size=32,
         
         exploration_policy="egreedy",
         epsilon=0.3,
@@ -188,7 +186,7 @@ if __name__ == "__main__":
         early_stopping=175,
 
         use_experience_replay=True,
-        batch_size=128,
+        batch_size=64,
         replay_buffer_size=1_000_000,
         
         use_target_network=True,
