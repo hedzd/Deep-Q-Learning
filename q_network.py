@@ -1,16 +1,21 @@
-import numpy as np
+import torch
 
-class q_network:
-    # class representing a neural net layer
-    def __init__(self, input_size, output_size, activation=None, lr       = 0.001):
-        self.input_size = input_size
-        self.output_size = output_size
-        self.weights = np.random.uniform(low=-0.5, high=0.5, size=(input_size, output_size))
-        self.activation_function = activation
-        self.lr = lr
+import torch.nn as nn
 
-    def forward(self):
-        pass
+class q_network(nn.Module):
+    def __init__(self, input_size, output_size, hidden_size=64):
+        super(q_network, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.fc3 = nn.Linear(hidden_size, output_size)
 
-    def backward(self):
-        pass
+
+    def forward(self, x, grad=True):
+        x = torch.tensor(x, dtype=torch.float32)
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        x = torch.softmax(self.fc3(x), dim=0)
+        if not grad:
+            x = x.detach()
+        return x
+    

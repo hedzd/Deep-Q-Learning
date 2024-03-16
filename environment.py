@@ -14,8 +14,6 @@ class Environment:
         for _ in range(1000):
             action = self.env.action_space.sample()  # agent policy that uses the observation and info
             observation, reward, terminated, truncated, info = self.env.step(action)
-            print(observation)
-            print(info)
             if terminated or truncated:
                 observation, info = self.env.reset()
 

@@ -1,5 +1,6 @@
-import gym
+import gymnasium as gym
 import numpy as np
+from q_network import QNetwork
 
 env=gym.make('CartPole-v1')
 NUM_EPISODES = 10
