@@ -14,8 +14,9 @@ class dqn_agent:
         training_iterations,
         learning_rate,
         gamma,
-        epsilon,
         hidden_layer_size,
+        exploration_policy,
+        epsilon,        
         eval_episodes,
         eval_frequency,
         early_stopping,
@@ -29,7 +30,10 @@ class dqn_agent:
 
         self.training_iterations = training_iterations
         self.gamma = gamma
+
+        self.exploration_policy = exploration_policy
         self.epsilon = epsilon
+        
         self.eval_episodes = eval_episodes
         self.eval_frequency = eval_frequency
         self.early_stopping = early_stopping
@@ -115,7 +119,7 @@ class dqn_agent:
         pbar = tqdm(range(self.training_iterations))
         for i in pbar:
             # select action and take a step
-            action = self.select_action(self.state)
+            action = self.select_action(self.state, self.exploration_policy)
             next_state, reward, done, truncated, info = self.env.env.step(action)
 
             # reset if done
@@ -154,6 +158,10 @@ class dqn_agent:
                     break
 
         # test
+                
+        plt.plot(avg_rewards)
+        plt.show()
+        test = input()
         self.env = Environment(render=True)
         self.state, info = self.env.reset_env()
         done = False
@@ -162,24 +170,28 @@ class dqn_agent:
             next_state, reward, done, truncated, info = self.env.env.step(action)
             self.state = next_state
 
-        plt.plot(avg_rewards)
-        plt.show()
+        
 
 
 if __name__ == "__main__":
     agent = dqn_agent(
-        training_iterations=1000,
-        learning_rate=1e-4,
+        training_iterations=5000,
+        learning_rate=1e-3,
         gamma=0.99,
-        epsilon=0.3,
         hidden_layer_size=128,
+        
+        exploration_policy="egreedy",
+        epsilon=0.3,
+        
         eval_episodes=10,
         eval_frequency=100,
-        early_stopping=150,
+        early_stopping=175,
+
         use_experience_replay=True,
         batch_size=128,
-        replay_buffer_size=1000,
+        replay_buffer_size=1_000_000,
+        
         use_target_network=True,
-        target_update=1000,
+        target_update=10,
     )
     agent.run()
