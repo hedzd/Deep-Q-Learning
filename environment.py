@@ -1,5 +1,6 @@
 import gymnasium as gym
 
+
 class Environment:
     def __init__(self, render=False):
         if render:
@@ -13,9 +14,11 @@ class Environment:
 
     def simulate_env(self):
         observation, info = self.env.reset()
-        
+
         for _ in range(1000):
-            action = self.env.action_space.sample()  # agent policy that uses the observation and info
+            action = (
+                self.env.action_space.sample()
+            )  # agent policy that uses the observation and info
             observation, reward, terminated, truncated, info = self.env.step(action)
             if terminated or truncated:
                 observation, info = self.env.reset()
@@ -23,6 +26,6 @@ class Environment:
         self.env.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     env = Environment(render=True)
     env.simulate_env()

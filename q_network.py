@@ -2,14 +2,15 @@ import torch
 
 import torch.nn as nn
 
+
 class q_network(nn.Module):
-    def __init__(self, input_size, output_size, hidden_size=4):
+    def __init__(self, lr, input_size, output_size, hidden_size=4):
         super(q_network, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
         self.fc3 = nn.Linear(hidden_size, output_size)
 
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=0.01)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         self.loss_fn = nn.MSELoss()
 
     def forward(self, x, grad=True):
@@ -20,7 +21,7 @@ class q_network(nn.Module):
         if not grad:
             x = x.detach()
         return x
-    
+
     def backward(self, state, target):
         self.optimizer.zero_grad()
         loss = self.loss_fn(target, self.forward(state, grad=True))
