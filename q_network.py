@@ -4,20 +4,23 @@ import torch.nn as nn
 
 
 class q_network(nn.Module):
-    def __init__(self, lr, input_size, output_size, hidden_size=4):
+    def __init__(self, lr, input_size, output_size, num_hidden_layers=1, hidden_size=4):
         super(q_network, self).__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.fc3 = nn.Linear(hidden_size, output_size)
+        self.inp = nn.Linear(input_size, hidden_size)
+        self.hidden = []
+        for _ in range(num_hidden_layers):
+            self.hidden.append(nn.Linear(hidden_size, hidden_size))
+        self.out = nn.Linear(hidden_size, output_size)
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         self.loss_fn = nn.MSELoss()
 
     def forward(self, x, grad=True):
         x = torch.tensor(x, dtype=torch.float32)
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = torch.relu(self.inp(x))
+        for layer in self.hidden:
+            x = torch.relu(layer(x))
+        x = self.out(x)
         if not grad:
             x = x.detach()
         return x

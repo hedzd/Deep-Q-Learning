@@ -14,6 +14,7 @@ class dqn_agent:
         training_iterations,
         learning_rate,
         gamma,
+        num_hidden_layers,
         hidden_layer_size,
         exploration_policy,
         epsilon,        
@@ -49,6 +50,7 @@ class dqn_agent:
             lr=learning_rate,
             input_size=self.env.env.observation_space.shape[0],
             output_size=self.env.env.action_space.n,
+            num_hidden_layers=num_hidden_layers,
             hidden_size=hidden_layer_size,
         )
 
@@ -57,6 +59,7 @@ class dqn_agent:
                 lr=learning_rate,
                 input_size=self.env.env.observation_space.shape[0],
                 output_size=self.env.env.action_space.n,
+                num_hidden_layers=num_hidden_layers,
                 hidden_size=hidden_layer_size,
             )
             self.target_update = target_update
@@ -161,7 +164,7 @@ class dqn_agent:
         # test                
         plt.plot(avg_rewards)
         plt.show()
-        test = input()
+        
         self.env = Environment(render=True)
         self.state, info = self.env.reset_env()
         done = False
@@ -176,14 +179,15 @@ if __name__ == "__main__":
         training_iterations=5000,
         learning_rate=1e-2,
         gamma=0.99,
+        num_hidden_layers=1,
         hidden_layer_size=32,
         
         exploration_policy="egreedy",
         epsilon=0.3,
         
         eval_episodes=10,
-        eval_frequency=100,
-        early_stopping=175,
+        eval_frequency=50,
+        early_stopping=400,
 
         use_experience_replay=True,
         batch_size=64,
