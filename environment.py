@@ -1,8 +1,11 @@
 import gymnasium as gym
 
 class Environment:
-    def __init__(self):
-        self.env = gym.make("CartPole-v1", render_mode="human")
+    def __init__(self, render=False):
+        if render:
+            self.env = gym.make("CartPole-v1", render_mode="human")
+        else:
+            self.env = gym.make("CartPole-v1")
 
     def reset_env(self):
         observation, info = self.env.reset()
