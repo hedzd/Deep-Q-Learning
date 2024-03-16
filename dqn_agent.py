@@ -13,6 +13,7 @@ class dqn_agent:
         self,
         training_iterations,
         learning_rate,
+        gamma,
         epsilon,
         hidden_layer_size,
         eval_episodes,
@@ -27,6 +28,7 @@ class dqn_agent:
         self.env = Environment()
 
         self.training_iterations = training_iterations
+        self.gamma = gamma
         self.epsilon = epsilon
         self.eval_episodes = eval_episodes
         self.eval_frequency = eval_frequency
@@ -86,7 +88,7 @@ class dqn_agent:
                 next_q_values = self.target_network.forward(next_state, grad=False)
             else:
                 next_q_values = self.network.forward(next_state, grad=False)
-            target[action] = reward + np.max(next_q_values.numpy())  # gamma = 1
+            target[action] = reward + self.gamma * np.max(next_q_values.numpy())
 
         return self.network.backward(state, target)
 
@@ -167,14 +169,15 @@ class dqn_agent:
 if __name__ == "__main__":
     agent = dqn_agent(
         training_iterations=1000,
-        learning_rate=0.01,
-        epsilon=0.1,
-        hidden_layer_size=4,
+        learning_rate=1e-4,
+        gamma=0.99,
+        epsilon=0.3,
+        hidden_layer_size=128,
         eval_episodes=10,
         eval_frequency=100,
         early_stopping=150,
         use_experience_replay=True,
-        batch_size=32,
+        batch_size=128,
         replay_buffer_size=1000,
         use_target_network=True,
         target_update=1000,
