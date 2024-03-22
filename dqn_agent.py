@@ -5,8 +5,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch
-from hyperopt import fmin, tpe, hp
+from hyperopt import hp, fmin, tpe, space_eval
 from functools import partial
+from joblib import Parallel, delayed
 
 class dqn_agent:
     env = None
@@ -27,8 +28,7 @@ class dqn_agent:
         batch_size,
         replay_buffer_size,
         use_target_network,
-        target_update,
-        temperature,
+        target_update
     ):
         self.env = Environment()
 
@@ -37,7 +37,6 @@ class dqn_agent:
 
         self.exploration_policy = exploration_policy
         self.epsilon = epsilon
-        self.temperature = temperature
         
         self.eval_episodes = eval_episodes
         self.eval_frequency = eval_frequency
@@ -94,6 +93,7 @@ class dqn_agent:
         
         elif policy == "greedy":
             values = self.network.forward(observation, grad=False)
+            # print(np.max(values.numpy()))
             a = np.argmax(values.numpy())
 
         return a
@@ -196,61 +196,82 @@ class dqn_agent:
         return avg_rewards[-1]
 
 def objective(params):
-    agent = dqn_agent(
-        training_iterations=10_000,
-        learning_rate=params['learning_rate'],
-        gamma=0.99,
-        num_hidden_layers=params['num_hidden_layers'],
-        hidden_layer_size=params['hidden_layer_size'],
-        
-        exploration_policy="egreedy",
-        epsilon=params['epsilon'],
-        
-        eval_episodes=10,
-        eval_frequency=50, # not used for optimization
-        early_stopping=400, # not used for optimization
+    print("\t".join([f"{k}: {round(v,5)}" for k, v in params.items()]))
+    
+    avg_reward = 0
+    runs = 10
+    for _ in range(runs):
+        avg_reward += dqn_agent(
+            training_iterations=20_000,
+            learning_rate=params['learning_rate'],
+            gamma=0.99,
+            num_hidden_layers=int(params['num_hidden_layers']),
+            hidden_layer_size=int(params['hidden_layer_size']),
+            
+            exploration_policy="egreedy",
+            epsilon=params['epsilon'],
+            
+            eval_episodes=10,
+            eval_frequency=50, # not used for optimization
+            early_stopping=500, # not used for optimization
 
-        use_experience_replay=True, # cmd line option
-        batch_size=params['batch_size'],
-        replay_buffer_size=1_000_000, # just infinite?
-        
-        use_target_network=True, # cmd line option
-        target_update=params['target_update']
-    )
-    avg_reward = agent.run()
+            use_experience_replay=True, # cmd line option
+            batch_size=int(params['batch_size']),
+            replay_buffer_size=int(params['replay_buffer_size']),
+            
+            use_target_network=True, # cmd line option
+            target_update=params['target_update']
+        ).run() / runs
+    
     return -avg_reward
+
+# cmd line arg
+HYPEROPT = False
 
 if __name__ == "__main__":
     
-    space = {
-        'learning_rate': hp.loguniform('learning_rate', np.log(1e-4), np.log(1e-1)),
-        'num_hidden_layers': hp.choice('num_hidden_layers', [1, 2, 3]),
-        'hidden_layer_size': hp.choice('hidden_layer_size', [16, 32, 64]),
-        'epsilon': hp.uniform('epsilon', 0.1, 0.5),
-        'batch_size': hp.choice('batch_size', [16, 32, 64, 128]),
-        'target_update': hp.choice('target_update', [5, 10, 20])
-    }
+    if HYPEROPT:
+        space = {
+            'learning_rate': hp.qloguniform('learning_rate', np.log(1e-4), np.log(1e-1), 1e-4),
+            'num_hidden_layers': hp.choice('num_hidden_layers', [1, 2, 3]),
+            'hidden_layer_size': hp.qloguniform('hidden_layer_size', np.log(8), np.log(64), 8),
+            'epsilon': hp.quniform('epsilon', 0.1, 0.5, 0.1),
+            'batch_size': hp.qloguniform('batch_size', np.log(16), np.log(128), 16),
+            'target_update': hp.quniform('target_update', 5, 50, 5),
+            'replay_buffer_size': hp.qloguniform('replay_buffer_size', np.log(1e3), np.log(1e6), 1e3)
+        }
 
-    best = fmin(objective, space, algo=partial(tpe.suggest, n_startup_jobs=2), max_evals=10)
-    print(best)
+        best = space_eval(space, fmin(objective, space, algo=partial(tpe.suggest, n_startup_jobs=5), max_evals=20))
+        print("\t".join([f"{k}: {round(v,5)}" for k, v in best.items()]))
+    
+    else:
+        best = {
+            'learning_rate': 5e-4,
+            'num_hidden_layers': 0,
+            'hidden_layer_size': 64,
+            'epsilon': 0.1,
+            'batch_size': 32,
+            'target_update': 1000,
+            'replay_buffer_size': 50000
+        }
+    
     agent = dqn_agent(
-        training_iterations=10_000,
+        training_iterations=50_000,
         learning_rate=best['learning_rate'],
         gamma=0.99,
-        num_hidden_layers=best['num_hidden_layers'],
-        hidden_layer_size=best['hidden_layer_size'],
+        num_hidden_layers=int(best['num_hidden_layers']),
+        hidden_layer_size=int(best['hidden_layer_size']),
         
         exploration_policy="egreedy",
         epsilon=best['epsilon'],
-        temperature=0.5,
         
         eval_episodes=10,
         eval_frequency=50,
-        early_stopping=400,
+        early_stopping=500,
 
         use_experience_replay=True, # cmd line option
-        batch_size=best['batch_size'],
-        replay_buffer_size=1_000_000, # just infinite?
+        batch_size=int(best['batch_size']),
+        replay_buffer_size=int(best['replay_buffer_size']),
         
         use_target_network=True, # cmd line option
         target_update=best['target_update']

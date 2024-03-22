@@ -6,6 +6,7 @@ import torch.nn as nn
 class q_network(nn.Module):
     def __init__(self, lr, input_size, output_size, num_hidden_layers=1, hidden_size=4):
         super(q_network, self).__init__()
+        
         self.inp = nn.Linear(input_size, hidden_size)
         self.hidden = []
         for _ in range(num_hidden_layers):
@@ -17,9 +18,9 @@ class q_network(nn.Module):
 
     def forward(self, x, grad=True):
         x = torch.tensor(x, dtype=torch.float32)
-        x = torch.relu(self.inp(x))
+        x = nn.functional.tanh(self.inp(x))
         for layer in self.hidden:
-            x = torch.relu(layer(x))
+            x = nn.functional.tanh(layer(x))
         x = self.out(x)
         if not grad:
             x = x.detach()
