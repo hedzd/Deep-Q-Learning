@@ -27,7 +27,7 @@ class q_network(nn.Module):
 
     def backward(self, state, target):
         self.optimizer.zero_grad()
-        loss = self.loss_fn(target, self.forward(state, grad=True))
+        loss = self.loss_fn(self.forward(state, grad=True), target)
         loss.backward()
         self.optimizer.step()
-        return loss.item()
+        return loss.mean()

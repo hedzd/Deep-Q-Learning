@@ -4,7 +4,9 @@ from q_network import q_network
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-
+import torch
+from hyperopt import fmin, tpe, hp
+from functools import partial
 
 class dqn_agent:
     env = None
@@ -85,19 +87,19 @@ class dqn_agent:
 
         return a
 
-    def update_network(self, state, action, reward, done, next_state):
+    def update_network(self, states, actions, rewards, done, next_states):
 
-        target = self.network.forward(state, grad=False)
-        if done:
-            target[action] = reward
+        target = self.network.forward(states, grad=False).numpy()
+        target[done][:, actions[done]] = rewards[done]        
+        
+        if self.use_target_network:
+            next_q_values = self.target_network.forward(next_states, grad=False).numpy()
         else:
-            if self.use_target_network:
-                next_q_values = self.target_network.forward(next_state, grad=False)
-            else:
-                next_q_values = self.network.forward(next_state, grad=False)
-            target[action] = reward + self.gamma * np.max(next_q_values.numpy())
+            next_q_values = self.network.forward(next_states, grad=False).numpy()
+        target[~done, actions[~done]] = rewards[~done] + self.gamma * np.max(next_q_values, axis=1)[~done]
 
-        return self.network.backward(state, target)
+        target = torch.tensor(target)
+        return self.network.backward(states, target)
 
     def eval(self):
         rewards = []
@@ -117,10 +119,10 @@ class dqn_agent:
 
         return np.mean(rewards)
 
-    def run(self):
+    def run(self, test=False):
         avg_rewards = []
         self.state, info = self.env.reset_env()
-        pbar = tqdm(range(self.training_iterations))
+        pbar = tqdm(range(self.training_iterations)) if test else range(self.training_iterations)
         for i in pbar:
             # select action and take a step
             action = self.select_action(self.state, self.exploration_policy)
@@ -135,15 +137,19 @@ class dqn_agent:
                 self.buffer.append((self.state, action, reward, done or truncated))
                 self.state = next_state
 
-                if i > self.batch_size:
+                if len(self.buffer) > self.batch_size:
                     # train with random samples from the buffer
-                    batch_indices = np.random.choice(
-                        len(self.buffer) - 1, self.batch_size
-                    )
-                    for index in batch_indices:
-                        state, action, reward, done = self.buffer[index]
-                        next_state, _, _, _ = self.buffer[index + 1]
-                        self.update_network(state, action, reward, done, next_state)
+                    batch_indices = np.random.choice(len(self.buffer) - 1, self.batch_size).astype(int)
+                    batch = [self.buffer[index] for index in batch_indices]
+                    states, actions, rewards, done = zip(*batch)
+                    next_states = [self.buffer[index+1][0] for index in batch_indices]
+                    states = np.array(states)
+                    actions = np.array(actions)
+                    rewards = np.array(rewards)
+                    done = np.array(done)
+                    next_states = np.array(next_states)
+                    self.update_network(states, actions, rewards, done, next_states)
+                    
             else:
                 # train with the last state
                 self.update_network(self.state, action, reward, done or truncated, next_state)
@@ -154,46 +160,87 @@ class dqn_agent:
                 self.target_network.load_state_dict(self.network.state_dict())
 
             # evaluate
-            if i % self.eval_frequency == 0:
+            if (i % self.eval_frequency == 0 and test) or i == self.training_iterations - 1:
                 avg_rewards.append(self.eval())
-                pbar.set_description(f"Average reward {avg_rewards[-1]}")
+                if test:
+                    pbar.set_description(f"Average reward {avg_rewards[-1]}")
                 if avg_rewards[-1] > self.early_stopping:
                     print(f"Training completed in {i} iterations")
                     break
 
-        # test                
-        plt.plot(avg_rewards)
-        plt.show()
-        
-        self.env = Environment(render=True)
-        self.state, info = self.env.reset_env()
-        done = False
-        truncated = False
-        while not done and not truncated:
-            action = self.select_action(self.state, policy="greedy")
-            next_state, reward, done, truncated, info = self.env.env.step(action)
-            self.state = next_state
+        if test:
+            # test
+            plt.plot(avg_rewards)
+            plt.show()
+            
+            self.env = Environment(render=True)
+            self.state, info = self.env.reset_env()
+            done = False
+            truncated = False
+            while not done and not truncated:
+                action = self.select_action(self.state, policy="greedy")
+                next_state, reward, done, truncated, info = self.env.env.step(action)
+                self.state = next_state
 
-if __name__ == "__main__":
+        return avg_rewards[-1]
+
+def objective(params):
     agent = dqn_agent(
-        training_iterations=5000,
-        learning_rate=1e-2,
+        training_iterations=10_000,
+        learning_rate=params['learning_rate'],
         gamma=0.99,
-        num_hidden_layers=1,
-        hidden_layer_size=32,
+        num_hidden_layers=params['num_hidden_layers'],
+        hidden_layer_size=params['hidden_layer_size'],
         
         exploration_policy="egreedy",
-        epsilon=0.3,
+        epsilon=params['epsilon'],
+        
+        eval_episodes=10,
+        eval_frequency=50, # not used for optimization
+        early_stopping=400, # not used for optimization
+
+        use_experience_replay=True, # cmd line option
+        batch_size=params['batch_size'],
+        replay_buffer_size=1_000_000, # just infinite?
+        
+        use_target_network=True, # cmd line option
+        target_update=params['target_update']
+    )
+    avg_reward = agent.run()
+    return -avg_reward
+
+if __name__ == "__main__":
+    
+    space = {
+        'learning_rate': hp.loguniform('learning_rate', np.log(1e-4), np.log(1e-1)),
+        'num_hidden_layers': hp.choice('num_hidden_layers', [1, 2, 3]),
+        'hidden_layer_size': hp.choice('hidden_layer_size', [16, 32, 64]),
+        'epsilon': hp.uniform('epsilon', 0.1, 0.5),
+        'batch_size': hp.choice('batch_size', [16, 32, 64, 128]),
+        'target_update': hp.choice('target_update', [5, 10, 20])
+    }
+
+    best = fmin(objective, space, algo=partial(tpe.suggest, n_startup_jobs=2), max_evals=10)
+    print(best)
+    agent = dqn_agent(
+        training_iterations=10_000,
+        learning_rate=best['learning_rate'],
+        gamma=0.99,
+        num_hidden_layers=best['num_hidden_layers'],
+        hidden_layer_size=best['hidden_layer_size'],
+        
+        exploration_policy="egreedy",
+        epsilon=best['epsilon'],
         
         eval_episodes=10,
         eval_frequency=50,
         early_stopping=400,
 
-        use_experience_replay=True,
-        batch_size=64,
-        replay_buffer_size=1_000_000,
+        use_experience_replay=True, # cmd line option
+        batch_size=best['batch_size'],
+        replay_buffer_size=1_000_000, # just infinite?
         
-        use_target_network=True,
-        target_update=10,
+        use_target_network=True, # cmd line option
+        target_update=best['target_update']
     )
-    agent.run()
+    agent.run(test=True)
