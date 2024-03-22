@@ -28,6 +28,7 @@ class dqn_agent:
         replay_buffer_size,
         use_target_network,
         target_update,
+        temperature,
     ):
         self.env = Environment()
 
@@ -36,6 +37,7 @@ class dqn_agent:
 
         self.exploration_policy = exploration_policy
         self.epsilon = epsilon
+        self.temperature = temperature
         
         self.eval_episodes = eval_episodes
         self.eval_frequency = eval_frequency
@@ -79,8 +81,17 @@ class dqn_agent:
                 a = np.argmax(values.numpy())
 
         elif policy == "boltzmann":
-            raise NotImplementedError("Boltzmann policy not implemented yet")  # TODO
-
+            if self.temperature is None:
+                raise KeyError("Provide a temperature")
+            
+            values = self.network.forward(observation, grad=False)
+            probabilities = np.exp(values.numpy() / self.temperature)
+            probabilities = probabilities / np.sum(probabilities)  # Normalize probabilities
+            if np.any(np.isnan(probabilities)):  # Handle NaN values by selecting a random action
+                a = np.random.randint(self.env.env.action_space.n)
+            else:
+                a = np.random.choice(range(len(probabilities)), p=probabilities)
+        
         elif policy == "greedy":
             values = self.network.forward(observation, grad=False)
             a = np.argmax(values.numpy())
@@ -231,6 +242,7 @@ if __name__ == "__main__":
         
         exploration_policy="egreedy",
         epsilon=best['epsilon'],
+        temperature=0.5,
         
         eval_episodes=10,
         eval_frequency=50,
