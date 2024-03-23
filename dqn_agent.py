@@ -101,13 +101,13 @@ class dqn_agent:
     def update_network(self, states, actions, rewards, done, next_states):
 
         target = self.network.forward(states, grad=False).numpy()
-        target[done][:, actions[done]] = rewards[done]        
         
         if self.use_target_network:
             next_q_values = self.target_network.forward(next_states, grad=False).numpy()
         else:
             next_q_values = self.network.forward(next_states, grad=False).numpy()
-        target[~done, actions[~done]] = rewards[~done] + self.gamma * np.max(next_q_values, axis=1)[~done]
+
+        target[:, actions] = rewards + (1 - done) * self.gamma * np.max(next_q_values, axis=1)
 
         target = torch.tensor(target)
         return self.network.backward(states, target)
@@ -116,13 +116,13 @@ class dqn_agent:
         rewards = []
         for _ in range(self.eval_episodes):
             env = Environment()
-            state, info = env.reset_env()
+            state, _ = env.reset_env()
             done = False
             truncated = False
             total_reward = 0
             while not done and not truncated:
                 action = self.select_action(state, policy="greedy")
-                next_state, reward, done, truncated, info = env.env.step(action)
+                next_state, reward, done, truncated, _ = env.env.step(action)
                 total_reward += reward
                 state = next_state
 
@@ -132,20 +132,20 @@ class dqn_agent:
 
     def run(self, test=False):
         avg_rewards = []
-        self.state, info = self.env.reset_env()
+        self.state, _ = self.env.reset_env()
         pbar = tqdm(range(self.training_iterations)) if test else range(self.training_iterations)
         for i in pbar:
             # select action and take a step
             action = self.select_action(self.state, self.exploration_policy)
-            next_state, reward, done, truncated, info = self.env.env.step(action)
+            next_state, reward, done, truncated, _ = self.env.env.step(action)
 
             # reset if done
             if done or truncated:
-                self.state, info = self.env.reset_env()
+                self.state, _ = self.env.reset_env()
 
             if self.use_experience_replay:
                 # append to buffer
-                self.buffer.append((self.state, action, reward, done or truncated))
+                self.buffer.append((self.state, action, reward, done))
                 self.state = next_state
 
                 if len(self.buffer) > self.batch_size:
@@ -163,11 +163,11 @@ class dqn_agent:
                     
             else:
                 # train with the last state
-                self.update_network(self.state, action, reward, done or truncated, next_state)
+                self.update_network(self.state, action, reward, done, next_state)
                 self.state = next_state
 
             # clone the network to the target network
-            if i % self.target_update == 0 and self.use_target_network:
+            if self.use_target_network and i % self.target_update == 0:
                 self.target_network.load_state_dict(self.network.state_dict())
 
             # evaluate
@@ -185,12 +185,12 @@ class dqn_agent:
             plt.show()
             
             self.env = Environment(render=True)
-            self.state, info = self.env.reset_env()
+            self.state, _ = self.env.reset_env()
             done = False
             truncated = False
             while not done and not truncated:
                 action = self.select_action(self.state, policy="greedy")
-                next_state, reward, done, truncated, info = self.env.env.step(action)
+                next_state, reward, done, truncated, _ = self.env.env.step(action)
                 self.state = next_state
 
         return avg_rewards[-1]

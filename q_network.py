@@ -9,7 +9,7 @@ class q_network(nn.Module):
         
         self.inp = nn.Linear(input_size, hidden_size)
         self.hidden = []
-        for _ in range(num_hidden_layers):
+        for _ in range(num_hidden_layers-1):
             self.hidden.append(nn.Linear(hidden_size, hidden_size))
         self.out = nn.Linear(hidden_size, output_size)
 
@@ -18,9 +18,9 @@ class q_network(nn.Module):
 
     def forward(self, x, grad=True):
         x = torch.tensor(x, dtype=torch.float32)
-        x = nn.functional.tanh(self.inp(x))
+        x = nn.functional.elu(self.inp(x))
         for layer in self.hidden:
-            x = nn.functional.tanh(layer(x))
+            x = nn.functional.elu(layer(x))
         x = self.out(x)
         if not grad:
             x = x.detach()
