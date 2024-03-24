@@ -7,7 +7,7 @@ from tqdm import tqdm
 import torch
 from hyperopt import hp, fmin, tpe, space_eval
 from functools import partial
-from joblib import Parallel, delayed
+from scipy.signal import savgol_filter
 
 class dqn_agent:
     env = None
@@ -20,7 +20,7 @@ class dqn_agent:
         num_hidden_layers,
         hidden_layer_size,
         exploration_policy,
-        epsilon,        
+        exploration_param,        
         eval_episodes,
         eval_frequency,
         early_stopping,
@@ -36,7 +36,7 @@ class dqn_agent:
         self.gamma = gamma
 
         self.exploration_policy = exploration_policy
-        self.epsilon = epsilon
+        self.exploration_param = exploration_param
         
         self.eval_episodes = eval_episodes
         self.eval_frequency = eval_frequency
@@ -69,22 +69,22 @@ class dqn_agent:
 
     def select_action(self, observation=None, policy="egreedy"):
         if policy == "egreedy":
-            if self.epsilon is None:
+            if self.exploration_param is None:
                 raise KeyError("Provide an epsilon")
 
             values = self.network.forward(observation, grad=False)
             random_num = np.random.random()
-            if random_num < self.epsilon:
+            if random_num < self.exploration_param:
                 a = np.random.randint(self.env.env.action_space.n)
             else:
                 a = np.argmax(values.numpy())
 
         elif policy == "boltzmann":
-            if self.temperature is None:
+            if self.exploration_param is None:
                 raise KeyError("Provide a temperature")
             
             values = self.network.forward(observation, grad=False)
-            probabilities = np.exp(values.numpy() / self.temperature)
+            probabilities = np.exp(values.numpy() / self.exploration_param)
             probabilities = probabilities / np.sum(probabilities)  # Normalize probabilities
             if np.any(np.isnan(probabilities)):  # Handle NaN values by selecting a random action
                 a = np.random.randint(self.env.env.action_space.n)
@@ -180,7 +180,7 @@ class dqn_agent:
 
         if test:
             # test
-            plt.plot(avg_rewards)
+            plt.plot(savgol_filter(avg_rewards, window_length=9, polyorder=2)) # TODO make smoothing a parameter
             plt.show()
             
             self.env = Environment(render=True)
@@ -195,10 +195,8 @@ class dqn_agent:
         return avg_rewards[-1]
 
 def objective(params):
-    print("\t".join([f"{k}: {round(v,5)}" for k, v in params.items()]))
-    
     avg_reward = 0
-    runs = 10
+    runs = 5
     for _ in range(runs):
         avg_reward += dqn_agent(
             training_iterations=20_000,
@@ -208,10 +206,10 @@ def objective(params):
             hidden_layer_size=int(params['hidden_layer_size']),
             
             exploration_policy="egreedy",
-            epsilon=params['epsilon'],
+            exploration_param=params['epsilon'],
             
             eval_episodes=10,
-            eval_frequency=50, # not used for optimization
+            eval_frequency=100, # not used for optimization
             early_stopping=500, # not used for optimization
 
             use_experience_replay=True, # cmd line option
@@ -222,6 +220,8 @@ def objective(params):
             target_update=params['target_update']
         ).run() / runs
     
+    print("\t".join([f"{k}: {round(v,5)}" for k, v in params.items()])+f"\tavg_reward: {round(avg_reward, 5)}")
+    
     return -avg_reward
 
 # cmd line arg
@@ -231,27 +231,38 @@ if __name__ == "__main__":
     
     if HYPEROPT:
         space = {
-            'learning_rate': hp.qloguniform('learning_rate', np.log(1e-4), np.log(1e-1), 1e-4),
+            'learning_rate': hp.qloguniform('learning_rate', np.log(1e-5), np.log(1e-1), 1e-5),
             'num_hidden_layers': hp.choice('num_hidden_layers', [1, 2, 3]),
-            'hidden_layer_size': hp.qloguniform('hidden_layer_size', np.log(8), np.log(64), 8),
-            'epsilon': hp.quniform('epsilon', 0.1, 0.5, 0.1),
+            'hidden_layer_size': hp.qloguniform('hidden_layer_size', np.log(4), np.log(256), 4),
+            'epsilon': hp.quniform('epsilon', 0.05, 0.5, 0.05),
             'batch_size': hp.qloguniform('batch_size', np.log(16), np.log(128), 16),
-            'target_update': hp.quniform('target_update', 5, 50, 5),
-            'replay_buffer_size': hp.qloguniform('replay_buffer_size', np.log(1e3), np.log(1e6), 1e3)
+            'target_update': hp.qloguniform('target_update', np.log(5), np.log(1000), 5),
+            'replay_buffer_size': hp.qloguniform('replay_buffer_size', np.log(1e3), np.log(1e9), 1e3)
         }
 
-        best = space_eval(space, fmin(objective, space, algo=partial(tpe.suggest, n_startup_jobs=5), max_evals=20))
+        best = space_eval(space, fmin(objective, space, algo=partial(tpe.suggest, n_startup_jobs=5), max_evals=50))
         print("\t".join([f"{k}: {round(v,5)}" for k, v in best.items()]))
     
     else:
-        best = {
-            'learning_rate': 5e-4,
-            'num_hidden_layers': 0,
+        # NOTE these are manually/rounded values with the optimized hyperparameters as starting point
+        # the result from tuning was: 
+        # batch_size:           80.0
+        # epsilon:              0.35 
+        # hidden_layer_size:    88.0
+        # learning_rate:        0.04646
+        # num_hidden_layers:    1
+        # replay_buffer_size:   875000.0
+        # target_update:        15.0
+        # avg_reward:           207.66
+
+        best = { 
+            'learning_rate': 0.05,
+            'num_hidden_layers': 1,
             'hidden_layer_size': 64,
-            'epsilon': 0.1,
-            'batch_size': 32,
-            'target_update': 1000,
-            'replay_buffer_size': 50000
+            'epsilon': 0.35,
+            'batch_size': 128,
+            'target_update': 15,
+            'replay_buffer_size': 1_000_000
         }
     
     agent = dqn_agent(
@@ -262,10 +273,10 @@ if __name__ == "__main__":
         hidden_layer_size=int(best['hidden_layer_size']),
         
         exploration_policy="egreedy",
-        epsilon=best['epsilon'],
+        exploration_param=best['epsilon'],
         
         eval_episodes=10,
-        eval_frequency=50,
+        eval_frequency=100,
         early_stopping=500,
 
         use_experience_replay=True, # cmd line option
