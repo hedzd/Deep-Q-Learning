@@ -266,7 +266,7 @@ if __name__ == "__main__":
         }
     
     agent = dqn_agent(
-        training_iterations=50_000,
+        training_iterations=20_000,
         learning_rate=best['learning_rate'],
         gamma=0.99,
         num_hidden_layers=int(best['num_hidden_layers']),
