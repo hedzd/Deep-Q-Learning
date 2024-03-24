@@ -135,7 +135,7 @@ class dqn_agent:
             rewards.append(total_reward)
 
         return np.mean(rewards)
-
+    
     def run(self, test=False):
         avg_rewards = []
         self.state, _ = self.env.reset_env()
@@ -187,8 +187,7 @@ class dqn_agent:
 
         if test:
             # test
-            plt.plot(savgol_filter(avg_rewards, window_length=9, polyorder=2)) # TODO make smoothing a parameter
-            plt.show()
+            plot_rewards(avg_rewards, window_length=9, polyorder=2, smooth=True)
             
             self.env = Environment(render=True)
             self.state, _ = self.env.reset_env()
@@ -201,6 +200,16 @@ class dqn_agent:
 
         return avg_rewards[-1]
 
+def plot_rewards(avg_rewards, window_length=9, polyorder=2, smooth=False):
+    if smooth:
+        plt.plot(savgol_filter(avg_rewards, window_length=window_length, polyorder=polyorder))
+    else:
+        plt.plot(avg_rewards, window_length=window_length, polyorder=polyorder)
+    
+    plt.xlabel('Episodes')
+    plt.ylabel('Average Reward')
+    plt.show()
+    
 def objective(params):
     avg_reward = 0
     runs = 5
