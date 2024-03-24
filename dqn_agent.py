@@ -8,6 +8,7 @@ import torch
 from hyperopt import hp, fmin, tpe, space_eval
 from functools import partial
 from scipy.signal import savgol_filter
+import argparse
 
 class dqn_agent:
     env = None
@@ -230,12 +231,18 @@ def objective(params):
     
     return -avg_reward
 
-# cmd line arg
-HYPEROPT = False
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--experience_replay', action='store_true')
+    parser.add_argument('--target_network', action='store_true')
+    parser.add_argument('--hyperopt', action='store_true')
+    args = parser.parse_args()
+
+    print("Experience Replay: ", args.experience_replay)
+    print("Target Network: ", args.target_network)
+    print("Hyperopt: ", args.hyperopt)
     
-    if HYPEROPT:
+    if args.hyperopt:
         space = {
             'learning_rate': hp.qloguniform('learning_rate', np.log(1e-5), np.log(1e-1), 1e-5),
             'num_hidden_layers': hp.choice('num_hidden_layers', [1, 2, 3]),
@@ -285,11 +292,11 @@ if __name__ == "__main__":
         eval_frequency=100,
         early_stopping=500,
 
-        use_experience_replay=True, # cmd line option
+        use_experience_replay=args.experience_replay,
         batch_size=int(best['batch_size']),
         replay_buffer_size=int(best['replay_buffer_size']),
         
-        use_target_network=True, # cmd line option
+        use_target_network=args.target_network,
         target_update=best['target_update']
     )
     agent.run(test=True)
