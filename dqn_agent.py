@@ -66,11 +66,14 @@ class dqn_agent:
                 hidden_size=hidden_layer_size,
             )
             self.target_update = target_update
-
-    def select_action(self, observation=None, policy="egreedy"):
+    
+    def select_action(self, observation=None, policy="egreedy", annealing=False, decay=0.99):
         if policy == "egreedy":
             if self.exploration_param is None:
                 raise KeyError("Provide an epsilon")
+
+            if annealing:
+                self.exploration_param *= decay
 
             values = self.network.forward(observation, grad=False)
             random_num = np.random.random()
@@ -82,6 +85,9 @@ class dqn_agent:
         elif policy == "boltzmann":
             if self.exploration_param is None:
                 raise KeyError("Provide a temperature")
+            
+            if annealing:
+                self.exploration_param *= decay
             
             values = self.network.forward(observation, grad=False)
             probabilities = np.exp(values.numpy() / self.exploration_param)
