@@ -93,7 +93,6 @@ class dqn_agent:
         
         elif policy == "greedy":
             values = self.network.forward(observation, grad=False)
-            # print(np.max(values.numpy()))
             a = np.argmax(values.numpy())
 
         return a
@@ -107,7 +106,7 @@ class dqn_agent:
         else:
             next_q_values = self.network.forward(next_states, grad=False).numpy()
 
-        target[:, actions] = rewards + (1 - done) * self.gamma * np.max(next_q_values, axis=1)
+        target[np.arange(len(target)), actions] = rewards + (1 - done) * self.gamma * np.max(next_q_values, axis=1)
 
         target = torch.tensor(target)
         return self.network.backward(states, target)
