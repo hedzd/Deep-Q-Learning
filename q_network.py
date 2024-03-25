@@ -18,6 +18,8 @@ class q_network(nn.Module):
 
     def forward(self, x, grad=True):
         x = torch.tensor(x, dtype=torch.float32)
+        if x.dim() == 1:
+            x = x.unsqueeze(0)
         x = nn.functional.elu(self.inp(x))
         for layer in self.hidden:
             x = nn.functional.elu(layer(x))
