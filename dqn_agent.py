@@ -2,13 +2,8 @@ from environment import Environment
 from collections import deque
 from q_network import q_network
 import numpy as np
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch
-from hyperopt import hp, fmin, tpe, space_eval
-from functools import partial
-from scipy.signal import savgol_filter
-import argparse
 
 class dqn_agent:
     env = None
@@ -24,14 +19,15 @@ class dqn_agent:
         exploration_param,        
         eval_episodes,
         eval_frequency,
-        early_stopping,
         use_experience_replay,
         batch_size,
         replay_buffer_size,
         use_target_network,
-        target_update
+        target_update,
+        environment="CartPole-v1",
     ):
-        self.env = Environment()
+        self.env = Environment(environment)
+        self.env_name = environment
 
         self.training_iterations = training_iterations
         self.gamma = gamma
@@ -41,7 +37,6 @@ class dqn_agent:
         
         self.eval_episodes = eval_episodes
         self.eval_frequency = eval_frequency
-        self.early_stopping = early_stopping
 
         self.use_experience_replay = use_experience_replay
         self.replay_buffer_size = replay_buffer_size
@@ -121,7 +116,7 @@ class dqn_agent:
     def eval(self):
         rewards = []
         for _ in range(self.eval_episodes):
-            env = Environment()
+            env = Environment(self.env_name)
             state, _ = env.reset_env()
             done = False
             truncated = False
@@ -177,19 +172,14 @@ class dqn_agent:
                 self.target_network.load_state_dict(self.network.state_dict())
 
             # evaluate
-            if (i % self.eval_frequency == 0 and test) or i == self.training_iterations - 1:
+            if i % self.eval_frequency == 0 or i == self.training_iterations - 1:
                 avg_rewards.append(self.eval())
                 if test:
                     pbar.set_description(f"Average reward {avg_rewards[-1]}")
-                if avg_rewards[-1] > self.early_stopping:
-                    print(f"Training completed in {i} iterations")
-                    break
 
         if test:
             # test
-            plot_rewards(avg_rewards, window_length=9, polyorder=2, smooth=True)
-            
-            self.env = Environment(render=True)
+            self.env = Environment(self.env_name, render=True)
             self.state, _ = self.env.reset_env()
             done = False
             truncated = False
@@ -198,114 +188,4 @@ class dqn_agent:
                 next_state, reward, done, truncated, _ = self.env.env.step(action)
                 self.state = next_state
 
-        return avg_rewards[-1]
-
-def plot_rewards(avg_rewards, window_length=9, polyorder=2, smooth=False):
-    if smooth:
-        plt.plot(savgol_filter(avg_rewards, window_length=window_length, polyorder=polyorder))
-    else:
-        plt.plot(avg_rewards, window_length=window_length, polyorder=polyorder)
-    
-    plt.xlabel('Episodes')
-    plt.ylabel('Average Reward')
-    plt.show()
-    
-def objective(params):
-    avg_reward = 0
-    runs = 5
-    for _ in range(runs):
-        avg_reward += dqn_agent(
-            training_iterations=20_000,
-            learning_rate=params['learning_rate'],
-            gamma=0.99,
-            num_hidden_layers=int(params['num_hidden_layers']),
-            hidden_layer_size=int(params['hidden_layer_size']),
-            
-            exploration_policy="egreedy",
-            exploration_param=params['epsilon'],
-            
-            eval_episodes=10,
-            eval_frequency=100, # not used for optimization
-            early_stopping=500, # not used for optimization
-
-            use_experience_replay=True, # cmd line option
-            batch_size=int(params['batch_size']),
-            replay_buffer_size=int(params['replay_buffer_size']),
-            
-            use_target_network=True, # cmd line option
-            target_update=params['target_update']
-        ).run() / runs
-    
-    print("\t".join([f"{k}: {round(v,5)}" for k, v in params.items()])+f"\tavg_reward: {round(avg_reward, 5)}")
-    
-    return -avg_reward
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--experience_replay', action='store_true')
-    parser.add_argument('--target_network', action='store_true')
-    parser.add_argument('--hyperopt', action='store_true')
-    args = parser.parse_args()
-
-    print("Experience Replay: ", args.experience_replay)
-    print("Target Network: ", args.target_network)
-    print("Hyperopt: ", args.hyperopt)
-    
-    if args.hyperopt:
-        space = {
-            'learning_rate': hp.qloguniform('learning_rate', np.log(1e-5), np.log(1e-1), 1e-5),
-            'num_hidden_layers': hp.choice('num_hidden_layers', [1, 2, 3]),
-            'hidden_layer_size': hp.qloguniform('hidden_layer_size', np.log(4), np.log(256), 4),
-            'epsilon': hp.quniform('epsilon', 0.05, 0.5, 0.05),
-            'batch_size': hp.qloguniform('batch_size', np.log(16), np.log(128), 16),
-            'target_update': hp.qloguniform('target_update', np.log(5), np.log(1000), 5),
-            'replay_buffer_size': hp.qloguniform('replay_buffer_size', np.log(1e3), np.log(1e9), 1e3)
-        }
-
-        best = space_eval(space, fmin(objective, space, algo=partial(tpe.suggest, n_startup_jobs=5), max_evals=50))
-        print("\t".join([f"{k}: {round(v,5)}" for k, v in best.items()]))
-    
-    else:
-        # NOTE these are manually/rounded values with the optimized hyperparameters as starting point
-        # the result from tuning was: 
-        # batch_size:           80.0
-        # epsilon:              0.35 
-        # hidden_layer_size:    88.0
-        # learning_rate:        0.04646
-        # num_hidden_layers:    1
-        # replay_buffer_size:   875000.0
-        # target_update:        15.0
-        # avg_reward:           207.66
-
-        best = { 
-            'learning_rate': 0.05,
-            'num_hidden_layers': 1,
-            'hidden_layer_size': 64,
-            'epsilon': 0.35,
-            'batch_size': 128,
-            'target_update': 15,
-            'replay_buffer_size': 1_000_000
-        }
-    
-    agent = dqn_agent(
-        training_iterations=20_000,
-        learning_rate=best['learning_rate'],
-        gamma=0.99,
-        num_hidden_layers=int(best['num_hidden_layers']),
-        hidden_layer_size=int(best['hidden_layer_size']),
-        
-        exploration_policy="egreedy",
-        exploration_param=best['epsilon'],
-        
-        eval_episodes=10,
-        eval_frequency=100,
-        early_stopping=500,
-
-        use_experience_replay=args.experience_replay,
-        batch_size=int(best['batch_size']),
-        replay_buffer_size=int(best['replay_buffer_size']),
-        
-        use_target_network=args.target_network,
-        target_update=best['target_update']
-    )
-    agent.run(test=True)
+        return avg_rewards
