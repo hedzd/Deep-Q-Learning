@@ -16,7 +16,8 @@ class dqn_agent:
         num_hidden_layers,
         hidden_layer_size,
         exploration_policy,
-        exploration_param,        
+        exploration_param, 
+        exploration_decay,       
         eval_episodes,
         eval_frequency,
         use_experience_replay,
@@ -34,6 +35,7 @@ class dqn_agent:
 
         self.exploration_policy = exploration_policy
         self.exploration_param = exploration_param
+        self.exploration_decay = exploration_decay
         
         self.eval_episodes = eval_episodes
         self.eval_frequency = eval_frequency
@@ -63,13 +65,12 @@ class dqn_agent:
             )
             self.target_update = target_update
     
-    def select_action(self, observation=None, policy="egreedy", annealing=False, decay=0.99):
+    def select_action(self, observation=None, policy="greedy"):
         if policy == "egreedy":
             if self.exploration_param is None:
                 raise KeyError("Provide an epsilon")
 
-            if annealing:
-                self.exploration_param *= decay
+            self.exploration_param *= self.exploration_decay
 
             values = self.network.forward(observation, grad=False)
             random_num = np.random.random()
@@ -82,8 +83,8 @@ class dqn_agent:
             if self.exploration_param is None:
                 raise KeyError("Provide a temperature")
             
-            if annealing:
-                self.exploration_param *= decay
+            self.exploration_param *= self.exploration_decay
+            
             values = self.network.forward(observation, grad=False)[0] # [0] to remove the batch dimension, which will always be 1 here
             probabilities = values.numpy() / self.exploration_param
             probabilities -= np.max(probabilities) # use max to prevent overflow
