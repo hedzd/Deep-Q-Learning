@@ -88,6 +88,7 @@ class dqn_agent:
             values = self.network.forward(observation, grad=False)[0] # [0] to remove the batch dimension, which will always be 1 here
             probabilities = values.numpy() / self.exploration_param
             probabilities -= np.max(probabilities) # use max to prevent overflow
+            probabilities = np.exp(probabilities)
             probabilities /= np.sum(probabilities)  # Normalize probabilities
             
             if np.any(np.isnan(probabilities)):  # Handle NaN values by selecting a random action
