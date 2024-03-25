@@ -84,12 +84,14 @@ class dqn_agent:
             
             if annealing:
                 self.exploration_param *= decay
+            values = self.network.forward(observation, grad=False)[0] # [0] to remove the batch dimension, which will always be 1 here
+            probabilities = values.numpy() / self.exploration_param
+            probabilities -= np.max(probabilities) # use max to prevent overflow
+            probabilities /= np.sum(probabilities)  # Normalize probabilities
             
-            values = self.network.forward(observation, grad=False)
-            probabilities = np.exp(values.numpy() / self.exploration_param)
-            probabilities = probabilities / np.sum(probabilities)  # Normalize probabilities
             if np.any(np.isnan(probabilities)):  # Handle NaN values by selecting a random action
                 a = np.random.randint(self.env.env.action_space.n)
+            
             else:
                 a = np.random.choice(range(len(probabilities)), p=probabilities)
         
