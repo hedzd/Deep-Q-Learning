@@ -373,7 +373,7 @@ if __name__ == "__main__":
             print(use_target_network)
             param['use_experience_replay'] = use_experience_replay
             param['use_target_network'] = use_target_network
-            avg_rewards.append(experiment(param, runs=1))
+            avg_rewards.append(experiment(param, runs=10))
             
             np.savetxt(f"experiments/results/{filename}.txt", avg_rewards)
         
