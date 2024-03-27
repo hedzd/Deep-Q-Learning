@@ -1,6 +1,6 @@
 # Deep Q Learning
 
-This project explores the implementation of Deep Q-Networks (DQN) for the Cartpole environment (and Acrobot-v1 environment), including experiments for finetuning different hyperparameters, and an ablation study
+This project explores the implementation of Deep Q-Networks (DQN) for the Cartpole environment, including experiments for finetuning different hyperparameters, and an ablation study
 investigating the impact of experience replay and target network mechanisms on performance of this algorithm.
 
 
@@ -45,5 +45,24 @@ python main.py -exp
 You can rerun our ablation study using the following command:
 ```sh
 python main.py -a
+```
+### Running the TPE Algorithm for Automatic Hyperparameter Optimization
+To perform automatic hyperparameter optimization using the TPE algorithm, use:
+```sh
+python main.py -hpo
+```
+The script will explore the hyperparameter space to find the most effective values that lead to optimal performance.
+
+### Training the agent with optimized hyperparameters values with simulation of the environment
+To run the agent with optimized hyperparameters values, use the following command:
+```sh
+python main.py
+```
+By default, this uses the optimized value for hyperparameters that we mentioned in our report for Cartpole environment.
+
+### Changing the Environment
+To apply the previous commands to different environments such as 'Acrobot-v1', 'MountainCar-v0', or 'LunarLander-v2', specify the environment using the -env flag like so:
+```sh
+python main.py -env 'Acrobot-v1'
 ```
 
