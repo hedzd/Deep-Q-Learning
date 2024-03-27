@@ -83,8 +83,8 @@ def hyperparameter_tuning(environment="CartPole-v1"):
         'batch_size': hp.qloguniform('batch_size', np.log(16), np.log(128), 16),
         'target_update': hp.qloguniform('target_update', np.log(5), np.log(1000), 5),
         'replay_buffer_size': hp.qloguniform('replay_buffer_size', np.log(1e3), np.log(1e9), 1e3),
-        'exploration_policy': 'boltzmann',
-        'exploration_parameter': hp.qloguniform('exploration_parameter', np.log(0.01), np.log(10.0), 0.01),
+        'exploration_policy': 'egreedy',
+        'exploration_parameter': hp.qloguniform('exploration_parameter', np.log(0.01), np.log(0.5), 0.01),
         'exploration_decay': 1.0,
         'environment': environment
     }
@@ -172,8 +172,8 @@ if __name__ == "__main__":
                 'target_update': 10,
                 'replay_buffer_size': 1_000_000,
                 
-                'exploration_policy': 'egreedy', # egreedy or boltzmann
-                'exploration_parameter': 0.1, # 0.1 for egreedy, 1.0 for boltzmann
+                'exploration_policy': 'egreedy',
+                'exploration_parameter': 0.1,
                 'exploration_decay': 1.0,
             }
 
@@ -186,8 +186,36 @@ if __name__ == "__main__":
                 'target_update': 600,
                 'replay_buffer_size': 15_000,
                 
-                'exploration_policy': 'boltzmann',
-                'exploration_parameter': 1.0,
+                'exploration_policy': 'egreedy',
+                'exploration_parameter': 0.1,
+                'exploration_decay': 1.0,
+            }
+
+        elif args.environment == "MountainCar-v0": # not working
+            param = {
+                'learning_rate': 0.03242,
+                'num_hidden_layers': 1,
+                'hidden_layer_size': 92,
+                'batch_size': 32,
+                'target_update': 20,
+                'replay_buffer_size': 539_000,
+                
+                'exploration_policy': 'egreedy',
+                'exploration_parameter': 0.1,
+                'exploration_decay': 1.0,
+            }
+
+        elif args.environment == "LunarLander-v2":
+            param = { 
+                'learning_rate': 0.001,
+                'num_hidden_layers': 1,
+                'hidden_layer_size': 64,
+                'batch_size': 128,
+                'target_update': 20,
+                'replay_buffer_size': 100_000,
+                
+                'exploration_policy': 'egreedy',
+                'exploration_parameter': 0.2,
                 'exploration_decay': 1.0,
             }
 
@@ -255,7 +283,7 @@ if __name__ == "__main__":
             avg_rewards.append(experiment(param))
             np.savetxt(f"experiments/results/buffer_size_{buffer_size}.txt", avg_rewards[-1])
             labels.append(f"buffer size={buffer_size}")
-        param['replay_buffer_size'] = 1e5
+        param['replay_buffer_size'] = 1e6
         plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Buffer Size Comparison", filename="experiments/buffer_size.png")
 
         # target update experiment
@@ -266,7 +294,7 @@ if __name__ == "__main__":
             avg_rewards.append(experiment(param))
             np.savetxt(f"experiments/results/target_update_{target_update}.txt", avg_rewards[-1])
             labels.append(f"target update freq={target_update}")
-        param['target_update'] = 20
+        param['target_update'] = 10
             
         plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Target Update Frequency Comparison", filename="experiments/target_update.png")
        
