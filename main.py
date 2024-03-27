@@ -270,29 +270,29 @@ if __name__ == "__main__":
             
         plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Target Update Frequency Comparison", filename="experiments/target_update.png")
        
-        # # e-greedy exploration parameter experiment
-        # avg_rewards = []
-        # labels = []
-        # param['exploration_policy'] = 'egreedy'
-        # for exploration_param in [0.01, 0.03, 0.05, 0.1, 0.3]:
-        #     param['exploration_parameter'] = exploration_param
-        #     avg_rewards.append(experiment(param))
-        #     np.savetxt(f"experiments/results/exploration_param_{exploration_param}.txt", avg_rewards[-1])
-        #     labels.append(rf"$\epsilon$ = {exploration_param}")
+        # e-greedy exploration parameter experiment
+        avg_rewards = []
+        labels = []
+        param['exploration_policy'] = 'egreedy'
+        for exploration_param in [0.01, 0.03, 0.05, 0.1, 0.3]:
+            param['exploration_parameter'] = exploration_param
+            avg_rewards.append(experiment(param))
+            np.savetxt(f"experiments/results/exploration_param_{exploration_param}.txt", avg_rewards[-1])
+            labels.append(rf"$\epsilon$ = {exploration_param}")
 
-        # plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title=r"$\epsilon$-greedy Exploration Parameter Comparison", filename="experiments/e-greedy.png")
+        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title=r"$\epsilon$-greedy Exploration Parameter Comparison", filename="experiments/e-greedy.png")
         
-        # # boltzmann exploration parameter experiment
-        # avg_rewards = []
-        # labels = []
-        # param['exploration_policy'] = 'boltzmann'
-        # for exploration_param in [0.01, 0.1, 0.5, 0.7, 1.0]:
-        #     param['exploration_parameter'] = exploration_param
-        #     avg_rewards.append(experiment(param))
-        #     np.savetxt(f"experiments/results/exploration_param_{exploration_param}.txt", avg_rewards[-1])
-        #     labels.append(rf'$\tau$ = {exploration_param}')
+        # boltzmann exploration parameter experiment
+        avg_rewards = []
+        labels = []
+        param['exploration_policy'] = 'boltzmann'
+        for exploration_param in [0.01, 0.1, 0.5, 0.7, 1.0]:
+            param['exploration_parameter'] = exploration_param
+            avg_rewards.append(experiment(param))
+            np.savetxt(f"experiments/results/exploration_param_{exploration_param}.txt", avg_rewards[-1])
+            labels.append(rf'$\tau$ = {exploration_param}')
 
-        # plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Boltzmann Exploration Parameter Comparison", filename="experiments/boltzmann.png")
+        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Boltzmann Exploration Parameter Comparison", filename="experiments/boltzmann.png")
 
         # exploration method experiment
         avg_rewards = []
@@ -303,8 +303,6 @@ if __name__ == "__main__":
             avg_rewards.append(experiment(param))
             np.savetxt(f"experiments/results/exploration_method_egreedy_exploration_param_{exploration_param}.txt", avg_rewards[-1])
             labels.append(rf'$\epsilon$-greedy, $\epsilon $ = {exploration_param}')
-            
-            print(labels[-1])
 
         param['exploration_policy'] = 'boltzmann'
         for exploration_param in [0.1,0.5,1.0]:
@@ -313,28 +311,28 @@ if __name__ == "__main__":
             np.savetxt(f"experiments/results/exploration_method_boltzmann_exploration_param_{exploration_param}.txt", avg_rewards[-1])
             labels.append(rf'Softmax, $\tau$ = {exploration_param}')
         
-        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Exploration Method Comparison", filename="experiments/exploration_method.png")        
+        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Exploration Method Comparison", filename="experiments/exploration_method2.png")        
 
         # exploration decay experiment
         avg_rewards = []
         labels = []
         param['exploration_policy'] = 'egreedy'
-        param['exploration_parameter'] = 0.1
+        param['exploration_parameter'] = 0.5
         for exploration_decay in [0.95, 0.99, 1.0]:
             param['exploration_decay'] = exploration_decay
             avg_rewards.append(experiment(param))
             np.savetxt(f"experiments/results/exploration_decay_egreedy_{exploration_decay}.txt", avg_rewards[-1])
-            labels.append(rf'$\epsilon$-greedy, decay = {exploration_decay}')
+            labels.append(rf'$\epsilon$-greedy, decay_rate = {exploration_decay}')
 
         param['exploration_policy'] = 'boltzmann'
-        param['exploration_parameter'] = 1.0
+        param['exploration_parameter'] = 5.0
         for exploration_decay in [0.95, 0.99, 1.0]:
             param['exploration_decay'] = exploration_decay
             avg_rewards.append(experiment(param))
             np.savetxt(f"experiments/results/exploration_decay_boltzman_{exploration_decay}.txt", avg_rewards[-1])
-            labels.append(rf'Softmax, decay = {exploration_decay}')
+            labels.append(rf'Softmax, decay_rate = {exploration_decay}')
 
-        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Exploration Decay Comparison", filename="experiments/exploration_decay.png")
+        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Exploration Annealing Comparison", filename="experiments/exploration_decay3.png")
     
     else:
         agent = dqn_agent(
