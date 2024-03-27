@@ -111,11 +111,11 @@ def experiment(param, runs=5):
             eval_episodes=10,
             eval_frequency=50,
 
-            use_experience_replay=True,
+            use_experience_replay=param['use_experience_replay'],
             batch_size=int(param['batch_size']),
             replay_buffer_size=int(param['replay_buffer_size']),
             
-            use_target_network=True,
+            use_target_network=param['use_target_network'],
             target_update=param['target_update']
         ).run())
 
@@ -172,7 +172,8 @@ if __name__ == "__main__":
                 'batch_size': 128,
                 'target_update': 10,
                 'replay_buffer_size': 1_000_000,
-                
+                'use_experience_replay': True,
+                'use_target_network': True,
                 'exploration_policy': 'egreedy',
                 'exploration_parameter': 0.1,
                 'exploration_decay': 1.0,
@@ -186,7 +187,8 @@ if __name__ == "__main__":
                 'batch_size': 80,
                 'target_update': 600,
                 'replay_buffer_size': 15_000,
-                
+                'use_experience_replay': True,
+                'use_target_network': True,
                 'exploration_policy': 'egreedy',
                 'exploration_parameter': 0.1,
                 'exploration_decay': 1.0,
@@ -200,7 +202,8 @@ if __name__ == "__main__":
                 'batch_size': 32,
                 'target_update': 20,
                 'replay_buffer_size': 539_000,
-                
+                'use_experience_replay': True,
+                'use_target_network': True,
                 'exploration_policy': 'egreedy',
                 'exploration_parameter': 0.1,
                 'exploration_decay': 1.0,
@@ -214,7 +217,8 @@ if __name__ == "__main__":
                 'batch_size': 128,
                 'target_update': 20,
                 'replay_buffer_size': 100_000,
-                
+                'use_experience_replay': True,
+                'use_target_network': True,
                 'exploration_policy': 'egreedy',
                 'exploration_parameter': 0.2,
                 'exploration_decay': 1.0,
@@ -298,30 +302,6 @@ if __name__ == "__main__":
         param['target_update'] = 10
             
         plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Target Update Frequency Comparison", filename="experiments/target_update.png")
-       
-        # e-greedy exploration parameter experiment
-        avg_rewards = []
-        labels = []
-        param['exploration_policy'] = 'egreedy'
-        for exploration_param in [0.01, 0.03, 0.05, 0.1, 0.3]:
-            param['exploration_parameter'] = exploration_param
-            avg_rewards.append(experiment(param))
-            np.savetxt(f"experiments/results/exploration_param_{exploration_param}.txt", avg_rewards[-1])
-            labels.append(rf"$\epsilon$ = {exploration_param}")
-
-        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title=r"$\epsilon$-greedy Exploration Parameter Comparison", filename="experiments/e-greedy.png")
-        
-        # boltzmann exploration parameter experiment
-        avg_rewards = []
-        labels = []
-        param['exploration_policy'] = 'boltzmann'
-        for exploration_param in [0.01, 0.1, 0.5, 0.7, 1.0]:
-            param['exploration_parameter'] = exploration_param
-            avg_rewards.append(experiment(param))
-            np.savetxt(f"experiments/results/exploration_param_{exploration_param}.txt", avg_rewards[-1])
-            labels.append(rf'$\tau$ = {exploration_param}')
-
-        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Boltzmann Exploration Parameter Comparison", filename="experiments/boltzmann.png")
 
         # exploration method experiment
         avg_rewards = []
@@ -362,6 +342,7 @@ if __name__ == "__main__":
             labels.append(rf'Softmax, decay_rate = {exploration_decay}')
 
         plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Exploration Annealing Comparison", filename="experiments/exploration_decay3.png")
+    
     elif args.ablation:
         avg_rewards = []
         params = [(True, True), (False, True), (True, False), (False, False)]
@@ -369,11 +350,9 @@ if __name__ == "__main__":
         filenames = ["ablation+er+tn", "ablation-er", "ablation-tn", "ablation-tn-er"]
 
         for i, ((use_experience_replay, use_target_network), title, filename) in enumerate(zip(params, labels, filenames)):
-            print(use_experience_replay)
-            print(use_target_network)
             param['use_experience_replay'] = use_experience_replay
             param['use_target_network'] = use_target_network
-            avg_rewards.append(experiment(param, runs=10))
+            avg_rewards.append(experiment(param, runs=5))
             
             np.savetxt(f"experiments/results/{filename}.txt", avg_rewards)
         
