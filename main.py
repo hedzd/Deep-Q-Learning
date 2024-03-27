@@ -156,16 +156,6 @@ if __name__ == "__main__":
         # replay_buffer_size:   875000.0
         # target_update:        15.0
         # avg_reward:           207.66
-
-        # Hyperparameter tuning results for cartpole-v1 using boltzmann:
-        # batch_size:           80.0
-        # temperature:          3.43    
-        # hidden_layer_size:    64
-        # learning_rate:        0.09881 
-        # num_hidden_layers:    1
-        # replay_buffer_size:   122000
-        # target_update:        70
-        # avg_reward:           182.14
     
     else: # use manually tuned parameters
 
@@ -232,7 +222,7 @@ if __name__ == "__main__":
             }
 
         else:
-            raise ValueError("Invalid environment. Choose from ['CartPole-v1', 'Acrobot-v1']")
+            raise ValueError("Invalid environment. Choose from ['CartPole-v1', 'Acrobot-v1', 'MountainCar-v0', 'LunarLander-v2']")
     
     if args.experiment:        
         
