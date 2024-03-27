@@ -123,11 +123,18 @@ def experiment(param, runs=5):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-er', '--experience_replay', action='store_true')
-    parser.add_argument('-tn', '--target_network', action='store_true')
+    parser.add_argument('-er', '--experience_replay', action='store_false', default=True)
+    parser.add_argument('-tn', '--target_network', action='store_false', default=True)
     parser.add_argument('-hpo', '--hyperopt', action='store_true')
     parser.add_argument('-e', '--experiment', action='store_true')
     parser.add_argument('-a', '--ablation', action='store_true')
+    parser.add_argument('-exp', '--exploration', action='store_true')
+    parser.add_argument('-hl', '--hidden_layers', action='store_true')
+    parser.add_argument('-hs', '--hidden_size', action='store_true')
+    parser.add_argument('-lr', '--learning_rate', action='store_true')
+    parser.add_argument('-bs', '--batch_size', action='store_true')
+    parser.add_argument('-bu', '--buffer_size', action='store_true')
+    parser.add_argument('-tu', '--target_update', action='store_true')
     parser.add_argument('-env', '--environment', type=str, default="CartPole-v1")
     args = parser.parse_args()
 
@@ -230,97 +237,94 @@ if __name__ == "__main__":
     if args.experiment:        
         
         # hidden layers experiment
-        avg_rewards = []
-        labels = []
-        for layers in [1, 2, 3]:
-            param['num_hidden_layers'] = layers
-            avg_rewards.append(experiment(param))
-            np.savetxt(f"experiments/results/hidden_layers_{layers}.txt", avg_rewards[-1])
-            if layers == 1:
-                labels.append(f"{layers} hidden layer")
-            else:
-                labels.append(f"{layers} hidden layers")
-        param['num_hidden_layers'] = 1
-            
-        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Comparison Hidden Layer Amount", filename="experiments/num_hidden_layers.png")
+        if args.hidden_layers:
+            avg_rewards = []
+            labels = []
+            for layers in [1, 2, 3]:
+                param['num_hidden_layers'] = layers
+                avg_rewards.append(experiment(param))
+                if layers == 1:
+                    labels.append(f"{layers} hidden layer")
+                else:
+                    labels.append(f"{layers} hidden layers")
+            param['num_hidden_layers'] = 1  
+            plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Comparison Hidden Layer Amount", filename="num_hidden_layers.png")
         
         # hidden layer size experiment
-        avg_rewards = []
-        labels = []
-        for nodes in [16, 32, 64, 128]:
-            param['hidden_layer_size'] = nodes
-            avg_rewards.append(experiment(param))
-            np.savetxt(f"experiments/results/hidden_layer_size_{nodes}.txt", avg_rewards[-1])
-            labels.append(f"{nodes} nodes")
-        param['hidden_layer_size'] = 128
-
-        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Comparison Hidden Layer Size", filename="experiments/hidden_layer_size.png")
+        elif args.hidden_size:
+            avg_rewards = []
+            labels = []
+            for nodes in [16, 32, 64, 128]:
+                param['hidden_layer_size'] = nodes
+                avg_rewards.append(experiment(param))
+                labels.append(f"{nodes} nodes")
+            param['hidden_layer_size'] = 128
+            plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Comparison Hidden Layer Size", filename="hidden_layer_size.png")
         
         # learning rate experiment
-        avg_rewards = []
-        labels = []
-        for lr in [0.5, 0.1, 0.05, 0.01]:
-            param['learning_rate'] = lr
-            avg_rewards.append(experiment(param))
-            np.savetxt(f"experiments/results/lr_{lr}.txt", avg_rewards[-1])
-            labels.append(r"$\alpha$={}".format(lr))
-        param['learning_rate'] = 0.1
-            
-        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Learning Rate Comparison", filename="experiments/lr.png")
+        elif args.learning_rate:
+            avg_rewards = []
+            labels = []
+            for lr in [0.5, 0.1, 0.05, 0.01]:
+                param['learning_rate'] = lr
+                avg_rewards.append(experiment(param))
+                np.savetxt(f"experiments/results/lr_{lr}.txt", avg_rewards[-1])
+                labels.append(r"$\alpha$={}".format(lr))
+            param['learning_rate'] = 0.1
+            plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Learning Rate Comparison", filename="learning_rate.png")
         
         # batch size experiment
-        avg_rewards = []
-        labels = []
-        for batch_size in [16, 32, 64, 128]:
-            param['batch_size'] = batch_size
-            avg_rewards.append(experiment(param))
-            np.savetxt(f"experiments/results/batch_size_{batch_size}.txt", avg_rewards[-1])
-            labels.append(f"batch size={batch_size}")
-        param['batch_size'] = 128
-            
-        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Batch Size Comparison", filename="experiments/batch_size.png")
+        elif args.batch_size:
+            avg_rewards = []
+            labels = []
+            for batch_size in [16, 32, 64, 128]:
+                param['batch_size'] = batch_size
+                avg_rewards.append(experiment(param))
+                labels.append(f"batch size={batch_size}")
+            param['batch_size'] = 128
+                
+            plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Batch Size Comparison", filename="batch_size.png")
 
         # buffer size experiment
-        avg_rewards = []
-        labels = []
-        for buffer_size in [1e3, 1e4, 1e5, 1e6]:
-            param['replay_buffer_size'] = buffer_size
-            avg_rewards.append(experiment(param))
-            np.savetxt(f"experiments/results/buffer_size_{buffer_size}.txt", avg_rewards[-1])
-            labels.append(f"buffer size={buffer_size}")
-        param['replay_buffer_size'] = 1e6
-        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Buffer Size Comparison", filename="experiments/buffer_size.png")
+        elif args.buffer_size:
+            avg_rewards = []
+            labels = []
+            for buffer_size in [1e3, 1e4, 1e5, 1e6]:
+                param['replay_buffer_size'] = buffer_size
+                avg_rewards.append(experiment(param))
+                labels.append(f"buffer size={buffer_size}")
+            param['replay_buffer_size'] = 1e6
+            plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Buffer Size Comparison", filename="buffer_size.png")
 
         # target update experiment
-        avg_rewards = []
-        labels = []
-        for target_update in [10, 20, 50, 100, 1000]:
-            param['target_update'] = target_update
-            avg_rewards.append(experiment(param))
-            np.savetxt(f"experiments/results/target_update_{target_update}.txt", avg_rewards[-1])
-            labels.append(f"target update freq={target_update}")
-        param['target_update'] = 10
-            
-        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Target Update Frequency Comparison", filename="experiments/target_update.png")
+        elif args.target_update:
+            avg_rewards = []
+            labels = []
+            for target_update in [10, 20, 50, 100, 1000]:
+                param['target_update'] = target_update
+                avg_rewards.append(experiment(param))
+                labels.append(f"target update freq={target_update}")
+            param['target_update'] = 10
+                
+            plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Target Update Frequency Comparison", filename="target_update.png")
 
-        # exploration method experiment
+    # exploration method experiment
+    elif args.exploration:
         avg_rewards = []
         labels = []
         param['exploration_policy'] = 'egreedy'
         for exploration_param in [0.03,0.1,0.3]:
             param['exploration_parameter'] = exploration_param
             avg_rewards.append(experiment(param))
-            np.savetxt(f"experiments/results/exploration_method_egreedy_exploration_param_{exploration_param}.txt", avg_rewards[-1])
             labels.append(rf'$\epsilon$-greedy, $\epsilon $ = {exploration_param}')
 
         param['exploration_policy'] = 'boltzmann'
         for exploration_param in [0.1,0.5,1.0]:
             param['exploration_parameter'] = exploration_param
             avg_rewards.append(experiment(param))
-            np.savetxt(f"experiments/results/exploration_method_boltzmann_exploration_param_{exploration_param}.txt", avg_rewards[-1])
             labels.append(rf'Softmax, $\tau$ = {exploration_param}')
         
-        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Exploration Method Comparison", filename="experiments/exploration_method2.png")        
+        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Exploration Method Comparison", filename="exploration_method.png")        
 
         # exploration decay experiment
         avg_rewards = []
@@ -330,7 +334,6 @@ if __name__ == "__main__":
         for exploration_decay in [0.95, 0.99, 1.0]:
             param['exploration_decay'] = exploration_decay
             avg_rewards.append(experiment(param))
-            np.savetxt(f"experiments/results/exploration_decay_egreedy_{exploration_decay}.txt", avg_rewards[-1])
             labels.append(rf'$\epsilon$-greedy, decay_rate = {exploration_decay}')
 
         param['exploration_policy'] = 'boltzmann'
@@ -338,24 +341,19 @@ if __name__ == "__main__":
         for exploration_decay in [0.95, 0.99, 1.0]:
             param['exploration_decay'] = exploration_decay
             avg_rewards.append(experiment(param))
-            np.savetxt(f"experiments/results/exploration_decay_boltzman_{exploration_decay}.txt", avg_rewards[-1])
             labels.append(rf'Softmax, decay_rate = {exploration_decay}')
 
-        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Exploration Annealing Comparison", filename="experiments/exploration_decay3.png")
+        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Exploration Annealing Comparison", filename="exploration_decay.png")
     
     elif args.ablation:
         avg_rewards = []
         params = [(True, True), (False, True), (True, False), (False, False)]
         labels = ["DQN", "DQN-ER", "DQN-TN", "DQN-TN-ER"]
-        filenames = ["ablation+er+tn", "ablation-er", "ablation-tn", "ablation-tn-er"]
-
-        for i, ((use_experience_replay, use_target_network), title, filename) in enumerate(zip(params, labels, filenames)):
+        for i, ((use_experience_replay, use_target_network), title) in enumerate(zip(params, labels)):
             param['use_experience_replay'] = use_experience_replay
             param['use_target_network'] = use_target_network
-            avg_rewards.append(experiment(param, runs=5))
-            
-            np.savetxt(f"experiments/results/{filename}.txt", avg_rewards)
-        
+            avg_rewards.append(experiment(param, runs=10))
+
         plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="DQN and Ablated Variants Comparison", filename=f"experiments/ablation.png")
     
     else:
