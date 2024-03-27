@@ -127,6 +127,7 @@ if __name__ == "__main__":
     parser.add_argument('-tn', '--target_network', action='store_true')
     parser.add_argument('-hpo', '--hyperopt', action='store_true')
     parser.add_argument('-e', '--experiment', action='store_true')
+    parser.add_argument('-a', '--ablation', action='store_true')
     parser.add_argument('-env', '--environment', type=str, default="CartPole-v1")
     args = parser.parse_args()
 
@@ -361,6 +362,22 @@ if __name__ == "__main__":
             labels.append(rf'Softmax, decay_rate = {exploration_decay}')
 
         plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="Exploration Annealing Comparison", filename="experiments/exploration_decay3.png")
+    elif args.ablation:
+        avg_rewards = []
+        params = [(True, True), (False, True), (True, False), (False, False)]
+        labels = ["DQN", "DQN-ER", "DQN-TN", "DQN-TN-ER"]
+        filenames = ["ablation+er+tn", "ablation-er", "ablation-tn", "ablation-tn-er"]
+
+        for i, ((use_experience_replay, use_target_network), title, filename) in enumerate(zip(params, labels, filenames)):
+            print(use_experience_replay)
+            print(use_target_network)
+            param['use_experience_replay'] = use_experience_replay
+            param['use_target_network'] = use_target_network
+            avg_rewards.append(experiment(param, runs=1))
+            
+            np.savetxt(f"experiments/results/{filename}.txt", avg_rewards)
+        
+        plot_rewards(np.array(avg_rewards), x_multipl=50, labels=labels, title="DQN and Ablated Variants Comparison", filename=f"experiments/ablation.png")
     
     else:
         agent = dqn_agent(
