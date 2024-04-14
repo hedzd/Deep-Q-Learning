@@ -8,9 +8,7 @@ class q_network(nn.Module):
         super(q_network, self).__init__()
         
         self.inp = nn.Linear(input_size, hidden_size)
-        self.hidden = []
-        for _ in range(num_hidden_layers-1):
-            self.hidden.append(nn.Linear(hidden_size, hidden_size))
+        self.hidden = nn.ModuleList([nn.Linear(hidden_size, hidden_size) for _ in range(num_hidden_layers-1)])
         self.out = nn.Linear(hidden_size, output_size)
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
